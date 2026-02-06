@@ -142,7 +142,7 @@
     <div class="neon-row" style="display:block;">
         <label style="font-size:11px; color:#2196F3; font-weight:bold;">GOOGLE ТАБЛИЦА (Вопросы):</label>
         <div class="input-wrap" style="margin-top:5px;">
-            <input type="text" id="sheet-url" placeholder="Вставь ссылку (Publish -> CSV)...">
+            <input type="text" id="sheet-url" placeholder="Вставь ссылку (Publish -> CSV)..." oninput="update()">
             <button class="clear-btn" onclick="clearInp('sheet-url')">×</button>
         </div>
         <div id="loading-msg">Загрузка...</div>
@@ -225,7 +225,7 @@
         cellSize: 60, ladderTh: 60, snakeTh: 60, tokenW: 60, tokenH: 60, tasks: [], playerCount: 4,
         colors: { dots: '#ffffff', modalBg: '#fff9e6', modalTxt: '#333333', btnBg: '#4CAF50', trail: '#ffffff' }, 
         neon: true, randQ: true, cellShape: 'circle', font: 'Arial', diceSkin: 'classic',
-        trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: []
+        trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: [], sheetUrl: ''
     };
 
     const bgImg = new Image();
@@ -288,71 +288,54 @@
         currentQuestionIdx = 0;
     }
 
-    function loadFromGoogle() {
-        const url = document.getElementById('sheet-url').value.trim();
+    function loadFromGoogle(urlOverride) {
+        const url = urlOverride || document.getElementById('sheet-url').value.trim();
         const msg = document.getElementById('loading-msg');
-        
-        if (!url) { alert("Вставь ссылку!"); return; }
+        if (!url) return;
         msg.style.display = 'block';
-        
         fetch(url)
             .then(res => res.text())
             .then(text => {
                 const rows = text.split(/\r?\n/);
-                let qText = "";
-                let aText = "";
-                
+                let qText = ""; let aText = "";
                 rows.forEach(row => {
                     if (!row.trim()) return;
-                    
-                    // Улучшенный парсинг CSV: разделяем только по запятым, 
-                    // игнорируя те, что внутри кавычек, и не ломая пробелы
                     const parts = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    
                     if (parts && parts.length >= 1) {
                         let q = parts[0].replace(/^"|"$/g, '').trim();
                         let a = parts.length > 1 ? parts[1].replace(/^"|"$/g, '').trim() : '';
-                        if(q) {
-                            qText += q + "\n";
-                            aText += a + "\n";
-                        }
+                        if(q) { qText += q + "\n"; aText += a + "\n"; }
                     }
                 });
-
                 document.getElementById('qs').value = qText.trim();
                 document.getElementById('ans').value = aText.trim();
                 update();
                 msg.innerText = "Успешно загружено!";
                 setTimeout(() => { msg.style.display = 'none'; msg.innerText = "Загрузка..."; }, 2000);
             })
-            .catch(err => {
-                console.error(err);
-                alert("Ошибка загрузки! Проверь ссылку.");
-                msg.style.display = 'none';
-            });
+            .catch(err => { console.error(err); msg.style.display = 'none'; });
     }
 
     function init() {
         window.addEventListener('resize', resize); resize();
         const p = new URLSearchParams(window.location.search);
         const d = p.get('game');
-        
         if (d) {
             try {
                 state = decode(d);
                 isGame = true;
                 document.getElementById('panel').style.display = 'none';
                 document.getElementById('turn-indicator').style.display = 'block';
+                // Автозагрузка если есть ссылка на Google
+                if(state.sheetUrl) loadFromGoogle(state.sheetUrl);
             } catch(e) { console.error(e); }
         }
-        
         document.body.style.fontFamily = state.font;
         document.getElementById('vic-title').style.fontFamily = state.font;
         if(state.music) { bgMusic.src = state.music; }
-        
         if(state.tokenW) document.getElementById('token-w').value = state.tokenW;
         if(state.tokenH) document.getElementById('token-h').value = state.tokenH;
-        
+        if(state.sheetUrl) document.getElementById('sheet-url').value = state.sheetUrl;
         applyStateToAssets(); prepareQuestions();
         update(); animate();
     }
@@ -365,8 +348,7 @@
     }
 
     function animate() {
-        pulseFrame += 0.035;
-        hue = (hue + 2) % 360;
+        pulseFrame += 0.035; hue = (hue + 2) % 360;
         tPos.forEach((p, i) => { 
             let oldX = p.x, oldY = p.y;
             p.x += (p.tx - p.x) * 0.35; p.y += (p.ty - p.y) * 0.35; 
@@ -376,9 +358,7 @@
                 if(state.trailType === 'rainbow') color = `hsl(${hue}, 100%, 70%)`;
                 else if(state.trailType === 'custom') color = state.colors.trail;
                 else color = ['#ff4d4d','#4d4dff','#4dff4d','#ffff4d'][i];
-                for(let k=0; k<2; k++) {
-                   trailParticles.push({ x: p.x + (Math.random()-0.5)*15, y: p.y + (Math.random()-0.5)*15, vx: (Math.random()-0.5), vy: (Math.random()-0.5), life: 1.0, color: color, size: Math.random()*2+1 });
-                }
+                for(let k=0; k<2; k++) { trailParticles.push({ x: p.x + (Math.random()-0.5)*15, y: p.y + (Math.random()-0.5)*15, vx: (Math.random()-0.5), vy: (Math.random()-0.5), life: 1.0, color: color, size: Math.random()*2+1 }); }
             }
         });
         trailParticles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; if(p.life <= 0) trailParticles.splice(i, 1); });
@@ -391,9 +371,7 @@
         requestAnimationFrame(animate);
     }
 
-    function toggleLinkMode() { isLinkMode = !isLinkMode;
-        linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0";
-    }
+    function toggleLinkMode() { isLinkMode = !isLinkMode; linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0"; }
 
     function roll() {
         if (isRoll || won) return;
@@ -402,12 +380,8 @@
         let c = 0;
         const iv = setInterval(() => { 
             diceVal = Math.floor(Math.random() * 6) + 1; 
-            if (++c > 12) { 
-                clearInterval(iv); isRoll = false; 
-                if(isGame) {
-                    currentPlayer = (currentPlayer + 1) % state.playerCount;
-                    document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1);
-                }
+            if (++c > 12) { clearInterval(iv); isRoll = false; 
+                if(isGame) { currentPlayer = (currentPlayer + 1) % state.playerCount; document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); }
                 setTimeout(showTask, 300); 
             } 
         }, 60);
@@ -427,21 +401,14 @@
         const inp = document.getElementById('answer-input'); inp.value = ""; setTimeout(() => inp.focus(), 100);
     }
 
-    function closeModal() {
-        document.getElementById('task-modal').classList.remove('show');
-    }
+    function closeModal() { document.getElementById('task-modal').classList.remove('show'); }
 
     function checkAnswer() {
         const m = document.getElementById('task-modal');
         const taskIdx = parseInt(m.getAttribute('data-ans-idx'));
         if (document.getElementById('answer-input').value.trim().toLowerCase() === state.tasks[taskIdx].a.toLowerCase()) { 
-            m.classList.remove('show');
-            playSfx(600, 'sine', 0.2); 
-            questionQueue.shift();
-        } else { 
-            playSfx(100, 'sawtooth', 0.3);
-            alert("Wrong!");
-        }
+            m.classList.remove('show'); playSfx(600, 'sine', 0.2); questionQueue.shift();
+        } else { playSfx(100, 'sawtooth', 0.3); alert("Wrong!"); }
     }
 
     function update() {
@@ -464,15 +431,14 @@
         state.diceSkin = document.getElementById('dice-skin').value;
         state.trailType = document.getElementById('trail-type').value;
         state.playerCount = parseInt(document.getElementById('p-count').value);
+        state.sheetUrl = document.getElementById('sheet-url').value;
         state.colors = { dots: document.getElementById('c-dots').value, modalBg: document.getElementById('c-bg').value, modalTxt: document.getElementById('c-txt').value, btnBg: document.getElementById('c-btn').value, trail: document.getElementById('c-trail').value };
-        
         document.getElementById('sz-val').innerText = state.cellSize; 
         document.getElementById('l-th-val').innerText = state.ladderTh;
         document.getElementById('s-th-val').innerText = state.snakeTh;
         document.getElementById('tw-val').innerText = state.tokenW;
         document.getElementById('th-val').innerText = state.tokenH;
         document.getElementById('font-preview').style.fontFamily = state.font;
-        
         const qs = document.getElementById('qs').value.split('\n'), ans = document.getElementById('ans').value.split('\n');
         state.tasks = qs.map((q, i) => ({ q: q.trim(), a: (ans[i] || '').trim() })).filter(t => t.q);
         applyStateToAssets();
@@ -493,61 +459,27 @@
             }
         });
         state.points.forEach((p, i) => {
-            const px = p.x * cvs.width;
-            const py = p.y * cvs.height;
-            const s = state.cellSize;
+            const px = p.x * cvs.width, py = p.y * cvs.height, s = state.cellSize;
             const hasToken = tPos.some(tp => Math.hypot(tp.x - px, tp.y - py) < 15);
-            const baseColor = hasToken ? `hsl(${hue}, 100%, 60%)` : (linkFrom === i ? "#e91e63" : p.type === 'skip'  ? "#f44336" : p.type === 'boost' ? "#4CAF50" : p.type === 'task'  ? "#2196F3" : state.colors.dots);
-
+            const baseColor = hasToken ? `hsl(${hue}, 100%, 60%)` : (linkFrom === i ? "#e91e63" : p.type === 'skip' ? "#f44336" : p.type === 'boost' ? "#4CAF50" : p.type === 'task' ? "#2196F3" : state.colors.dots);
             ctx.save();
-            if (state.neon) {
-                ctx.shadowBlur = hasToken ? 35 : 15;
-                ctx.shadowColor = baseColor;
-            }
-            ctx.fillStyle = "rgba(255,255,255,0.15)";
-            ctx.beginPath();
+            if (state.neon) { ctx.shadowBlur = hasToken ? 35 : 15; ctx.shadowColor = baseColor; }
+            ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.beginPath();
             if (state.cellShape === 'circle') ctx.arc(px, py, s / 2, 0, Math.PI * 2);
             else if (state.cellShape === 'square') ctx.roundRect(px - s / 2, py - s / 2, s, s, 10);
             else ctx.roundRect(px - s, py - s / 2, s * 2, s, 10);
             ctx.fill();
-
-            const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4);
-            grad.addColorStop(0, "rgba(255,255,255,0)");
-            grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
-            ctx.fillStyle = grad;
-            ctx.fill();
-            ctx.strokeStyle = "rgba(255,255,255,0.6)";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.strokeStyle = baseColor;
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.9;
-            ctx.stroke();
-            ctx.globalAlpha = 0.8;
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            if (state.cellShape === 'circle') ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2);
-            else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2);
-            ctx.fill();
+            const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4); grad.addColorStop(0, "rgba(255,255,255,0)"); grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
+            ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 2; ctx.stroke(); ctx.strokeStyle = baseColor; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = "white"; ctx.beginPath(); if (state.cellShape === 'circle') ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2); else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
-            if (!isGame) {
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = "white";
-                ctx.font = "14px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(i + 1, px, py + 5);
-            }
+            if (!isGame) { ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center"; ctx.fillText(i + 1, px, py + 5); }
         });
-        ctx.font = `bold 20px ${state.font}`;
-        ctx.fillStyle = "gold"; ctx.shadowBlur = 0; ctx.textAlign = "left";
+        ctx.font = `bold 20px ${state.font}`; ctx.fillStyle = "gold"; ctx.textAlign = "left";
         ctx.fillText("START", state.startPos.x, state.startPos.y); ctx.fillText("FINISH", state.finishPos.x, state.finishPos.y);
         for(let i=0; i < (isGame ? state.playerCount : 4); i++) {
-            let tw = state.tokenW;
-            let th = state.tokenH;
-            if (isGame && i === currentPlayer && !won) {
-                tw += Math.sin(pulseFrame)*8;
-                th += Math.sin(pulseFrame)*8;
-            }
+            let tw = state.tokenW, th = state.tokenH;
+            if (isGame && i === currentPlayer && !won) { tw += Math.sin(pulseFrame)*8; th += Math.sin(pulseFrame)*8; }
             ctx.save(); ctx.translate(tPos[i].x, tPos[i].y); ctx.rotate(tPos[i].angle);
             if (state.tokens[i] && tImgs[i].complete) { ctx.drawImage(tImgs[i], -tw/2, -th/2, tw, th); }
             else { ctx.fillStyle = ['red','blue','green','yellow'][i]; ctx.beginPath(); ctx.arc(0, 0, state.cellSize/3, 0, 7); ctx.fill(); }
@@ -580,8 +512,7 @@
     };
 
     window.oncontextmenu = (e) => {
-        e.preventDefault();
-        if(isGame) return;
+        e.preventDefault(); if(isGame) return;
         state.points.forEach(p => { if(Math.hypot(e.clientX-p.x*cvs.width, e.clientY-p.y*cvs.height) < state.cellSize/2) { const types=['normal','skip','boost','task']; p.type=types[(types.indexOf(p.type||'normal')+1)%types.length]; update(); playSfx(400); } });
     };
     cvs.onmousemove = (e) => {
@@ -610,8 +541,23 @@
     };
 
     function resize() { cvs.width = window.innerWidth; cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
-    function save() { navigator.clipboard.writeText(window.location.href.split('?')[0] + "?game=" + encode(state)); alert("URL Ссылка скопирована!"); }
-    function getIframe() { const url = window.location.href.split('?')[0] + "?game=" + encode(state); const code = `<iframe src="${url}" width="100%" height="600" style="border:none;" allow="autoplay; fullscreen"></iframe>`; navigator.clipboard.writeText(code); alert("Код iFrame скопирован!"); }
+    
+    function save() {
+        // Оптимизация для короткой ссылки
+        let slim = JSON.parse(JSON.stringify(state));
+        // 1. Округляем координаты до 3 знаков (экономит 60% места)
+        slim.points = slim.points.map(p => ({ x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000, type: p.type }));
+        slim.startPos = { x: Math.round(slim.startPos.x), y: Math.round(slim.startPos.y) };
+        slim.finishPos = { x: Math.round(slim.finishPos.x), y: Math.round(slim.finishPos.y) };
+        // 2. Если есть ссылка на Google Таблицу, удаляем массив задач из ссылки (они подгрузятся сами)
+        if (slim.sheetUrl) slim.tasks = [];
+        
+        const url = window.location.href.split('?')[0] + "?game=" + encode(slim);
+        navigator.clipboard.writeText(url);
+        alert("Ссылка скопирована! (Оптимизирована для большого маршрута)");
+    }
+
+    function getIframe() { save(); alert("Используйте скопированную ссылку для iframe"); }
     init();
 </script>
 </body>
