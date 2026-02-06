@@ -61,7 +61,6 @@
         @keyframes rainbowMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
         .cup { font-size: 150px; z-index: 20001; position: relative; }
         
-        /* Loading Spinner for Google Sheets */
         #loading-msg { display:none; color: #4CAF50; font-size: 12px; margin-bottom: 5px; text-align: center; }
     </style>
 </head>
@@ -289,31 +288,26 @@
         currentQuestionIdx = 0;
     }
 
-    // --- GOOGLE SHEETS LOADING ---
     function loadFromGoogle() {
         const url = document.getElementById('sheet-url').value.trim();
         const msg = document.getElementById('loading-msg');
         
         if (!url) { alert("Вставь ссылку!"); return; }
-        if (!url.includes('output=csv') && !url.includes('format=csv')) {
-            alert("Ошибка! Нужна ссылка CSV.\nВ таблице: Файл -> Поделиться -> Опубликовать в веб -> Выбрать CSV.");
-            return;
-        }
-
         msg.style.display = 'block';
         
         fetch(url)
             .then(res => res.text())
             .then(text => {
-                const rows = text.split('\n');
+                const rows = text.split(/\r?\n/);
                 let qText = "";
                 let aText = "";
                 
                 rows.forEach(row => {
-                    // Simple CSV Parse: Split by comma, but handle quotes rudimentarily
-                    // Assuming Col A = Question, Col B = Answer
-                    let parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                    if (!parts && row.includes(',')) parts = row.split(','); // Fallback
+                    if (!row.trim()) return;
+                    
+                    // Улучшенный парсинг CSV: разделяем только по запятым, 
+                    // игнорируя те, что внутри кавычек, и не ломая пробелы
+                    const parts = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                     
                     if (parts && parts.length >= 1) {
                         let q = parts[0].replace(/^"|"$/g, '').trim();
@@ -325,19 +319,18 @@
                     }
                 });
 
-                document.getElementById('qs').value = qText;
-                document.getElementById('ans').value = aText;
+                document.getElementById('qs').value = qText.trim();
+                document.getElementById('ans').value = aText.trim();
                 update();
                 msg.innerText = "Успешно загружено!";
                 setTimeout(() => { msg.style.display = 'none'; msg.innerText = "Загрузка..."; }, 2000);
             })
             .catch(err => {
                 console.error(err);
-                alert("Ошибка загрузки! Проверь ссылку и интернет.\n(Убедись, что таблица опубликована для всех)");
+                alert("Ошибка загрузки! Проверь ссылку.");
                 msg.style.display = 'none';
             });
     }
-    // -----------------------------
 
     function init() {
         window.addEventListener('resize', resize); resize();
