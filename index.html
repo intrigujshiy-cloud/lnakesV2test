@@ -17,7 +17,8 @@
         #turn-indicator {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             padding: 10px 20px; background: rgba(0,0,0,0.8); color: gold;
-            border: 2px solid gold; border-radius: 20px; font-weight: bold;
+            border: 2px solid gold; border-radius: 20px;
+            font-weight: bold;
             z-index: 50; display: none; font-size: 18px;
         }
         .input-wrap { position: relative; display: flex; align-items: center; margin-bottom: 8px; }
@@ -49,10 +50,7 @@
             background-size: cover; background-position: center;
         }
         #task-modal.show { transform: translate(-50%, -50%) scale(1); display: block; }
-        .close-modal {
-            position: absolute; top: 15px; right: 15px; font-size: 24px;
-            cursor: pointer; font-weight: bold; line-height: 1; opacity: 0.7;
-        }
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; opacity: 0.7; }
         .close-modal:hover { opacity: 1; }
         #answer-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 16px; border: 1px solid #ccc; background: white; color: #333; }
         #check-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; color: white; }
@@ -60,7 +58,6 @@
         #confetti-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         @keyframes rainbowMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
         .cup { font-size: 150px; z-index: 20001; position: relative; }
-        
         #loading-msg { display:none; color: #4CAF50; font-size: 12px; margin-bottom: 5px; text-align: center; }
     </style>
 </head>
@@ -227,19 +224,16 @@
         neon: true, randQ: true, cellShape: 'circle', font: 'Arial', diceSkin: 'classic',
         trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: [], sheetUrl: ''
     };
-
     const bgImg = new Image();
     const tImgs = [new Image(), new Image(), new Image(), new Image()];
     const ladderImgObj = new Image();
     const snakeImgObj = new Image();
-
     let tPos = [
         {x:window.innerWidth - 60,y:60,tx:window.innerWidth - 60,ty:60, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:140,tx:window.innerWidth - 60,ty:140, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:220,tx:window.innerWidth - 60,ty:220, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:300,tx:window.innerWidth - 60,ty:300, angle:0, isWin:false}
     ];
-
     let dragIdx = null, isGame = false, diceVal = "?", isRoll = false, won = false;
     let linkFrom = null, isLinkMode = false, particles = [], trailParticles = [], questionQueue = [], currentQuestionIdx = 0;
     let pulseFrame = 0, hue = 0, currentPlayer = 0;
@@ -326,7 +320,6 @@
                 isGame = true;
                 document.getElementById('panel').style.display = 'none';
                 document.getElementById('turn-indicator').style.display = 'block';
-                // Автозагрузка если есть ссылка на Google
                 if(state.sheetUrl) loadFromGoogle(state.sheetUrl);
             } catch(e) { console.error(e); }
         }
@@ -348,7 +341,8 @@
     }
 
     function animate() {
-        pulseFrame += 0.035; hue = (hue + 2) % 360;
+        pulseFrame += 0.035;
+        hue = (hue + 2) % 360;
         tPos.forEach((p, i) => { 
             let oldX = p.x, oldY = p.y;
             p.x += (p.tx - p.x) * 0.35; p.y += (p.ty - p.y) * 0.35; 
@@ -407,7 +401,8 @@
         const m = document.getElementById('task-modal');
         const taskIdx = parseInt(m.getAttribute('data-ans-idx'));
         if (document.getElementById('answer-input').value.trim().toLowerCase() === state.tasks[taskIdx].a.toLowerCase()) { 
-            m.classList.remove('show'); playSfx(600, 'sine', 0.2); questionQueue.shift();
+            m.classList.remove('show');
+            playSfx(600, 'sine', 0.2); questionQueue.shift();
         } else { playSfx(100, 'sawtooth', 0.3); alert("Wrong!"); }
     }
 
@@ -469,9 +464,13 @@
             else if (state.cellShape === 'square') ctx.roundRect(px - s / 2, py - s / 2, s, s, 10);
             else ctx.roundRect(px - s, py - s / 2, s * 2, s, 10);
             ctx.fill();
-            const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4); grad.addColorStop(0, "rgba(255,255,255,0)"); grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
-            ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 2; ctx.stroke(); ctx.strokeStyle = baseColor; ctx.lineWidth = 1; ctx.stroke();
-            ctx.fillStyle = "white"; ctx.beginPath(); if (state.cellShape === 'circle') ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2); else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+            const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4); grad.addColorStop(0, "rgba(255,255,255,0)");
+            grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
+            ctx.fillStyle = grad; ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 2; ctx.stroke(); ctx.strokeStyle = baseColor;
+            ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = "white"; ctx.beginPath(); if (state.cellShape === 'circle') ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2);
+            else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
             if (!isGame) { ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center"; ctx.fillText(i + 1, px, py + 5); }
         });
@@ -512,7 +511,8 @@
     };
 
     window.oncontextmenu = (e) => {
-        e.preventDefault(); if(isGame) return;
+        e.preventDefault();
+        if(isGame) return;
         state.points.forEach(p => { if(Math.hypot(e.clientX-p.x*cvs.width, e.clientY-p.y*cvs.height) < state.cellSize/2) { const types=['normal','skip','boost','task']; p.type=types[(types.indexOf(p.type||'normal')+1)%types.length]; update(); playSfx(400); } });
     };
     cvs.onmousemove = (e) => {
@@ -543,21 +543,23 @@
     function resize() { cvs.width = window.innerWidth; cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
     
     function save() {
-        // Оптимизация для короткой ссылки
         let slim = JSON.parse(JSON.stringify(state));
-        // 1. Округляем координаты до 3 знаков (экономит 60% места)
         slim.points = slim.points.map(p => ({ x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000, type: p.type }));
         slim.startPos = { x: Math.round(slim.startPos.x), y: Math.round(slim.startPos.y) };
         slim.finishPos = { x: Math.round(slim.finishPos.x), y: Math.round(slim.finishPos.y) };
-        // 2. Если есть ссылка на Google Таблицу, удаляем массив задач из ссылки (они подгрузятся сами)
         if (slim.sheetUrl) slim.tasks = [];
-        
         const url = window.location.href.split('?')[0] + "?game=" + encode(slim);
         navigator.clipboard.writeText(url);
-        alert("Ссылка скопирована! (Оптимизирована для большого маршрута)");
+        alert("Ссылка скопирована! (Оптимизирована)");
+        return url;
     }
 
-    function getIframe() { save(); alert("Используйте скопированную ссылку для iframe"); }
+    function getIframe() {
+        const url = save();
+        const iframeCode = `<iframe src="${url}" width="100%" height="600" style="border:none;" allow="autoplay"></iframe>`;
+        navigator.clipboard.writeText(iframeCode);
+        alert("Код iFrame скопирован! Вставьте его в Genially (Insert -> Others)");
+    }
     init();
 </script>
 </body>
