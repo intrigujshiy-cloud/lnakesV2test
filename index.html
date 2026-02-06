@@ -9,13 +9,15 @@
         body { margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
         canvas { display: block; }
         #panel {
-            position: absolute; left: 10px; top: 10px; width: 340px; 
+            position: absolute;
+            left: 10px; top: 10px; width: 340px; 
             background: rgba(0,0,0,0.95); padding: 15px; border-radius: 10px;
             z-index: 100; color: white; border: 1px solid #444;
             max-height: 95vh; overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         #turn-indicator {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            position: absolute;
+            top: 10px; left: 50%; transform: translateX(-50%);
             padding: 10px 20px; background: rgba(0,0,0,0.8); color: gold;
             border: 2px solid gold; border-radius: 20px;
             font-weight: bold;
@@ -23,9 +25,11 @@
         }
         .input-wrap { position: relative; display: flex; align-items: center; margin-bottom: 8px; }
         .clear-btn { 
-            position: absolute; right: 5px; background: none; border: none; 
+            position: absolute;
+            right: 5px; background: none; border: none; 
             color: #888; cursor: pointer; font-size: 18px; font-weight: bold; 
-            padding: 0 5px; line-height: 1; z-index: 5;
+            padding: 0 5px; line-height: 1;
+            z-index: 5;
         }
         .clear-btn:hover { color: #f44336; }
         .tasks-row { display: flex; gap: 10px; margin-bottom: 10px; }
@@ -42,12 +46,15 @@
         .size-label { font-size: 11px; margin-bottom: 4px; display: block; }
         #font-preview { background: #444; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 10px; font-size: 18px; border: 1px solid #666; min-height: 25px; }
         #task-modal { 
-            display: none; position: fixed; top: 50%; left: 50%; 
+            display: none;
+            position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -50%) scale(0.8); 
             width: 400px; min-height: 200px; padding: 30px; border-radius: 20px; 
-            z-index: 10000; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
+            z-index: 10000;
+            text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
             border: 2px solid #f0e68c; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background-size: cover; background-position: center;
+            background-size: cover;
+            background-position: center;
         }
         #task-modal.show { transform: translate(-50%, -50%) scale(1); display: block; }
         .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; opacity: 0.7; }
@@ -365,26 +372,32 @@
         requestAnimationFrame(animate);
     }
 
-    function toggleLinkMode() { isLinkMode = !isLinkMode; linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0"; }
+    function toggleLinkMode() { isLinkMode = !isLinkMode;
+        linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0";
+    }
 
     function roll() {
         if (isRoll || won) return;
-isRoll = true; playDiceSound();
+        isRoll = true; playDiceSound();
         if(bgMusic.paused && state.music) bgMusic.play().catch(()=>{});
         let c = 0;
-const iv = setInterval(() => { 
+        const iv = setInterval(() => { 
             diceVal = Math.floor(Math.random() * 6) + 1; 
             if (++c > 12) { 
-                clearInterval(iv); isRoll = false; 
-                if(isGame) {
-                    currentPlayer 
-= (currentPlayer + 1) % state.playerCount;
-                    document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1);
-                }
-                setTimeout(showTask, 300); 
+                clearInterval(iv); 
+                isRoll = false; 
+                
+                // Исправленный блок: вызов окна вопроса сразу после остановки кубика
+                setTimeout(() => {
+                    showTask(); 
+                    if(isGame) { 
+                        currentPlayer = (currentPlayer + 1) % state.playerCount; 
+                        document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); 
+                    }
+                }, 300); 
             } 
         }, 60);
-}
+    }
 
     function showTask() {
         if (!state.tasks || !state.tasks.length) return;
@@ -477,7 +490,8 @@ const iv = setInterval(() => {
             else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
-            if (!isGame) { ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center"; ctx.fillText(i + 1, px, py + 5); }
+            if (!isGame) { ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center";
+            ctx.fillText(i + 1, px, py + 5); }
         });
         ctx.font = `bold 20px ${state.font}`; ctx.fillStyle = "gold"; ctx.textAlign = "left";
         ctx.fillText("START", state.startPos.x, state.startPos.y); ctx.fillText("FINISH", state.finishPos.x, state.finishPos.y);
@@ -486,13 +500,16 @@ const iv = setInterval(() => {
             if (isGame && i === currentPlayer && !won) { tw += Math.sin(pulseFrame)*8; th += Math.sin(pulseFrame)*8; }
             ctx.save(); ctx.translate(tPos[i].x, tPos[i].y); ctx.rotate(tPos[i].angle);
             if (state.tokens[i] && tImgs[i].complete) { ctx.drawImage(tImgs[i], -tw/2, -th/2, tw, th); }
-            else { ctx.fillStyle = ['red','blue','green','yellow'][i]; ctx.beginPath(); ctx.arc(0, 0, state.cellSize/3, 0, 7); ctx.fill(); }
+            else { ctx.fillStyle = ['red','blue','green','yellow'][i]; ctx.beginPath();
+            ctx.arc(0, 0, state.cellSize/3, 0, 7); ctx.fill(); }
             ctx.restore();
         }
         const dx = cvs.width-110, dy = cvs.height-110; ctx.save();
         if(state.diceSkin === 'glass') { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2; }
-        else if(state.diceSkin === 'neon') { ctx.fillStyle = "#000"; ctx.strokeStyle = state.colors.dots; ctx.lineWidth = 4; ctx.shadowBlur = 15; ctx.shadowColor = state.colors.dots; }
-        else if(state.diceSkin === 'gold') { ctx.fillStyle = "gold"; ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 3; } else { ctx.fillStyle = "white"; }
+        else if(state.diceSkin === 'neon') { ctx.fillStyle = "#000"; ctx.strokeStyle = state.colors.dots;
+        ctx.lineWidth = 4; ctx.shadowBlur = 15; ctx.shadowColor = state.colors.dots; }
+        else if(state.diceSkin === 'gold') { ctx.fillStyle = "gold";
+        ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 3; } else { ctx.fillStyle = "white"; }
         ctx.beginPath(); ctx.roundRect(dx, dy, 90, 90, 15); ctx.fill(); if(state.diceSkin !== 'classic') ctx.stroke();
         ctx.shadowBlur = 0; ctx.fillStyle = (state.diceSkin === 'gold' || state.diceSkin === 'classic') ? "#333" : "white";
         ctx.font = `bold 55px ${state.font}`; ctx.textAlign = "center"; ctx.fillText(diceVal, dx+45, dy+65); ctx.restore();
@@ -503,16 +520,19 @@ const iv = setInterval(() => {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const x = e.clientX, y = e.clientY;
         if (x > cvs.width-110 && y > cvs.height-110) { roll(); return; }
-        for(let i=0; i<state.playerCount; i++) if (Math.hypot(x-tPos[i].x, y-tPos[i].y) < state.tokenW/2) { dragIdx = 't'+i; return; }
+        for(let i=0; i<state.playerCount; i++) if (Math.hypot(x-tPos[i].x, y-tPos[i].y) < state.tokenW/2) { dragIdx = 't'+i;
+        return; }
         if (Math.hypot(x-state.startPos.x, y-state.startPos.y) < 50) { dragIdx = 'start'; return; }
         if (Math.hypot(x-state.finishPos.x, y-state.finishPos.y) < 50) { dragIdx = 'finish'; return; }
         for (let i=0; i<state.points.length; i++) {
             if (Math.hypot(x-state.points[i].x*cvs.width, y-state.points[i].y*cvs.height) < state.cellSize/2) {
-                if (isLinkMode) { if (linkFrom === null) linkFrom = i; else if (linkFrom !== i) { state.links.push({from: linkFrom, to: i}); linkFrom = null; update(); } } else if (!isGame) dragIdx = 'p'+i;
+                if (isLinkMode) { if (linkFrom === null) linkFrom = i;
+                else if (linkFrom !== i) { state.links.push({from: linkFrom, to: i}); linkFrom = null; update(); } } else if (!isGame) dragIdx = 'p'+i;
                 return;
             }
         }
-        if (!isGame && !isLinkMode) { state.points.push({ x: x/cvs.width, y: y/cvs.height, type: 'normal' }); update(); }
+        if (!isGame && !isLinkMode) { state.points.push({ x: x/cvs.width, y: y/cvs.height, type: 'normal' });
+        update(); }
     };
 
     window.oncontextmenu = (e) => {
@@ -520,11 +540,13 @@ const iv = setInterval(() => {
         if(isGame) return;
         state.points.forEach(p => { if(Math.hypot(e.clientX-p.x*cvs.width, e.clientY-p.y*cvs.height) < state.cellSize/2) { const types=['normal','skip','boost','task']; p.type=types[(types.indexOf(p.type||'normal')+1)%types.length]; update(); playSfx(400); } });
     };
+
     cvs.onmousemove = (e) => {
         if (!dragIdx) return;
         if (dragIdx === 'start') state.startPos = {x: e.clientX, y: e.clientY};
         else if (dragIdx === 'finish') state.finishPos = {x: e.clientX, y: e.clientY};
-        else if (dragIdx.startsWith('t')) { tPos[dragIdx[1]].tx = e.clientX; tPos[dragIdx[1]].ty = e.clientY; }
+        else if (dragIdx.startsWith('t')) { tPos[dragIdx[1]].tx = e.clientX;
+        tPos[dragIdx[1]].ty = e.clientY; }
         else if (dragIdx.startsWith('p')) state.points[dragIdx.substring(1)] = { x: e.clientX/cvs.width, y: e.clientY/cvs.height };
         update();
     };
@@ -545,7 +567,8 @@ const iv = setInterval(() => {
         dragIdx = null; update();
     };
 
-    function resize() { cvs.width = window.innerWidth; cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
+    function resize() { cvs.width = window.innerWidth;
+    cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
     
     function save() {
         let slim = JSON.parse(JSON.stringify(state));
