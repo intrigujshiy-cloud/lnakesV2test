@@ -367,7 +367,7 @@
 
     function toggleLinkMode() { isLinkMode = !isLinkMode; linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0"; }
 
-   function roll() {
+ function roll() {
         if (isRoll || won) return;
         isRoll = true; playDiceSound();
         if(bgMusic.paused && state.music) bgMusic.play().catch(()=>{});
@@ -378,9 +378,11 @@
                 clearInterval(iv); 
                 isRoll = false; 
                 
-                // Сначала открываем вопрос, а потом меняем игрока (чтобы окно видело правильный контекст)
+                // Вызываем модальное окно с вопросом сразу после остановки кубика
                 setTimeout(() => {
-                    showTask(); // Вызываем модальное окно
+                    showTask(); 
+                    
+                    // Меняем индикатор игрока только если мы в режиме игры
                     if(isGame) { 
                         currentPlayer = (currentPlayer + 1) % state.playerCount; 
                         document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); 
