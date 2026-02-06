@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Planet Game: Super Editor (LZ + Sheets)</title>
-    <script language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <title>3D Planet Game: Super Editor + Google Sheets</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@700&family=Bungee&family=Kelly+Slab&family=Monoton&family=Pacifico&family=Ruslan+Display&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
@@ -62,8 +61,8 @@
         @keyframes rainbowMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
         .cup { font-size: 150px; z-index: 20001; position: relative; }
         
-        /* Стили для статуса загрузки */
-        #loading-status { font-size: 10px; color: #aaa; margin-bottom: 5px; font-style: italic; }
+        /* Loading Spinner for Google Sheets */
+        #loading-msg { display:none; color: #4CAF50; font-size: 12px; margin-bottom: 5px; text-align: center; }
     </style>
 </head>
 <body>
@@ -141,18 +140,20 @@
     <div class="input-wrap"><input type="text" id="ladder-url" placeholder="URL Лестницы" oninput="update()"><button class="clear-btn" onclick="clearInp('ladder-url')">×</button></div>
     <div class="input-wrap"><input type="text" id="snake-url" placeholder="URL Змеи" oninput="update()"><button class="clear-btn" onclick="clearInp('snake-url')">×</button></div>
 
-    <div style="border-top: 1px solid #555; margin-top: 10px; padding-top: 10px;">
-        <label style="font-size:11px; color:#2196F3; font-weight:bold;">GOOGLE TABLICA (CSV):</label>
-        <div class="input-wrap">
-            <input type="text" id="sheet-url" placeholder="Ссылка на Google CSV" oninput="update()">
+    <div class="neon-row" style="display:block;">
+        <label style="font-size:11px; color:#2196F3; font-weight:bold;">GOOGLE ТАБЛИЦА (Вопросы):</label>
+        <div class="input-wrap" style="margin-top:5px;">
+            <input type="text" id="sheet-url" placeholder="Вставь ссылку (Publish -> CSV)...">
             <button class="clear-btn" onclick="clearInp('sheet-url')">×</button>
         </div>
-        <div id="loading-status">Вставьте ссылку, если хотите загрузить вопросы из таблицы.</div>
+        <div id="loading-msg">Загрузка...</div>
+        <button class="btn" style="background:#673ab7; font-size:12px;" onclick="loadFromGoogle()">ЗАГРУЗИТЬ ВОПРОСЫ</button>
+        <div style="font-size:9px; color:#aaa; margin-top:5px;">Файл -> Поделиться -> Опубликовать в веб -> CSV</div>
     </div>
 
     <div class="tasks-row">
-        <div><label style="font-size:10px">ВОПРОСЫ (РУЧНЫЕ)</label><textarea id="qs" oninput="update()"></textarea></div>
-        <div><label style="font-size:10px">ОТВЕТЫ (РУЧНЫЕ)</label><textarea id="ans" oninput="update()"></textarea></div>
+        <div><label style="font-size:10px">ВОПРОСЫ</label><textarea id="qs" oninput="update()"></textarea></div>
+        <div><label style="font-size:10px">ОТВЕТЫ</label><textarea id="ans" oninput="update()"></textarea></div>
     </div>
 
     <div class="size-settings">
@@ -225,19 +226,21 @@
         cellSize: 60, ladderTh: 60, snakeTh: 60, tokenW: 60, tokenH: 60, tasks: [], playerCount: 4,
         colors: { dots: '#ffffff', modalBg: '#fff9e6', modalTxt: '#333333', btnBg: '#4CAF50', trail: '#ffffff' }, 
         neon: true, randQ: true, cellShape: 'circle', font: 'Arial', diceSkin: 'classic',
-        trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: [],
-        sheetUrl: '' // Добавлено поле для Google таблицы
+        trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: []
     };
+
     const bgImg = new Image();
     const tImgs = [new Image(), new Image(), new Image(), new Image()];
     const ladderImgObj = new Image();
     const snakeImgObj = new Image();
+
     let tPos = [
         {x:window.innerWidth - 60,y:60,tx:window.innerWidth - 60,ty:60, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:140,tx:window.innerWidth - 60,ty:140, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:220,tx:window.innerWidth - 60,ty:220, angle:0, isWin:false}, 
         {x:window.innerWidth - 60,y:300,tx:window.innerWidth - 60,ty:300, angle:0, isWin:false}
     ];
+
     let dragIdx = null, isGame = false, diceVal = "?", isRoll = false, won = false;
     let linkFrom = null, isLinkMode = false, particles = [], trailParticles = [], questionQueue = [], currentQuestionIdx = 0;
     let pulseFrame = 0, hue = 0, currentPlayer = 0;
@@ -273,85 +276,8 @@
         notes.forEach((f, i) => setTimeout(() => playSfx(f, 'triangle', 0.4, 0.1), [0, 0.12, 0.24, 0.36, 0.55][i] * 1000));
     }
 
-    // --- ОБНОВЛЕННАЯ СИСТЕМА КОДИРОВАНИЯ (LZ-STRING) ---
-    function encode(o) { 
-        // Сначала пробуем сжать
-        return LZString.compressToEncodedURIComponent(JSON.stringify(o)); 
-    }
-    
-    function decode(s) { 
-        // 1. Пробуем разжать LZ-String
-        let decompressed = LZString.decompressFromEncodedURIComponent(s);
-        if (decompressed) {
-            return JSON.parse(decompressed);
-        }
-        // 2. Если не вышло (старая ссылка), используем старый метод
-        try {
-            return JSON.parse(decodeURIComponent(atob(s)));
-        } catch(e) {
-            console.error("Decode error", e);
-            return null;
-        }
-    }
-
-    // --- ФУНКЦИЯ ЗАГРУЗКИ ИЗ GOOGLE ТАБЛИЦ ---
-    async function loadSheetData(url) {
-        if (!url) return;
-        console.log("Loading sheet from:", url);
-        
-        // Превращаем публичную ссылку в ссылку на CSV экспорт
-        // Поддерживает форматы /edit#gid=... и простые ссылки
-        let csvUrl = url;
-        if (url.includes('docs.google.com/spreadsheets')) {
-            // Убираем все после последнего слеша и добавляем экспорт
-             // Простая эвристика: меняем /edit... на /export?format=csv
-             if (url.indexOf('/edit') > -1) {
-                 csvUrl = url.replace(/\/edit.*$/, '/export?format=csv');
-             } else if (!url.includes('export')) {
-                 csvUrl = url + '/export?format=csv'; // попытка добавить если чистый ID
-             }
-        }
-
-        try {
-            const response = await fetch(csvUrl);
-            const data = await response.text();
-            
-            // Парсинг CSV (упрощенный, но рабочий для большинства случаев)
-            const rows = data.split('\n');
-            const newTasks = [];
-            
-            rows.forEach(row => {
-                // Разделяем по первой запятой
-                // ВНИМАНИЕ: Если в вопросе есть запятые, лучше использовать кавычки в CSV или другой разделитель
-                // Здесь простой сплит для надежности базовой версии.
-                // Для сложных CSV лучше использовать библиотеку, но мы делаем без зависимостей.
-                
-                // Пробуем найти разделитель
-                let parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g); 
-                // Если сложный регекс не сработал, делаем простой сплит по первой запятой
-                let q, a;
-                
-                const firstComma = row.indexOf(',');
-                if (firstComma > -1) {
-                    q = row.substring(0, firstComma).replace(/^"|"$/g, '').trim();
-                    a = row.substring(firstComma + 1).replace(/^"|"$/g, '').trim();
-                }
-
-                if (q && a) {
-                    newTasks.push({ q: q, a: a });
-                }
-            });
-
-            if (newTasks.length > 0) {
-                console.log("Loaded " + newTasks.length + " questions from sheet.");
-                state.tasks = newTasks; // Заменяем задачи в памяти (но не в URL конструктора)
-                prepareQuestions(); // Перемешиваем новые вопросы
-            }
-        } catch (e) {
-            console.error("Error loading sheet:", e);
-            alert("Ошибка загрузки Google Таблицы. Проверьте ссылку (должна быть опубликована в CSV).");
-        }
-    }
+    function encode(o) { return btoa(encodeURIComponent(JSON.stringify(o))); }
+    function decode(s) { return JSON.parse(decodeURIComponent(atob(s))); }
 
     function prepareQuestions() {
         if (!state.tasks || state.tasks.length === 0) return;
@@ -363,6 +289,56 @@
         currentQuestionIdx = 0;
     }
 
+    // --- GOOGLE SHEETS LOADING ---
+    function loadFromGoogle() {
+        const url = document.getElementById('sheet-url').value.trim();
+        const msg = document.getElementById('loading-msg');
+        
+        if (!url) { alert("Вставь ссылку!"); return; }
+        if (!url.includes('output=csv') && !url.includes('format=csv')) {
+            alert("Ошибка! Нужна ссылка CSV.\nВ таблице: Файл -> Поделиться -> Опубликовать в веб -> Выбрать CSV.");
+            return;
+        }
+
+        msg.style.display = 'block';
+        
+        fetch(url)
+            .then(res => res.text())
+            .then(text => {
+                const rows = text.split('\n');
+                let qText = "";
+                let aText = "";
+                
+                rows.forEach(row => {
+                    // Simple CSV Parse: Split by comma, but handle quotes rudimentarily
+                    // Assuming Col A = Question, Col B = Answer
+                    let parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    if (!parts && row.includes(',')) parts = row.split(','); // Fallback
+                    
+                    if (parts && parts.length >= 1) {
+                        let q = parts[0].replace(/^"|"$/g, '').trim();
+                        let a = parts.length > 1 ? parts[1].replace(/^"|"$/g, '').trim() : '';
+                        if(q) {
+                            qText += q + "\n";
+                            aText += a + "\n";
+                        }
+                    }
+                });
+
+                document.getElementById('qs').value = qText;
+                document.getElementById('ans').value = aText;
+                update();
+                msg.innerText = "Успешно загружено!";
+                setTimeout(() => { msg.style.display = 'none'; msg.innerText = "Загрузка..."; }, 2000);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Ошибка загрузки! Проверь ссылку и интернет.\n(Убедись, что таблица опубликована для всех)");
+                msg.style.display = 'none';
+            });
+    }
+    // -----------------------------
+
     function init() {
         window.addEventListener('resize', resize); resize();
         const p = new URLSearchParams(window.location.search);
@@ -370,19 +346,10 @@
         
         if (d) {
             try {
-                const loadedState = decode(d);
-                if (loadedState) {
-                    state = loadedState;
-                    isGame = true;
-                    document.getElementById('panel').style.display = 'none';
-                    document.getElementById('turn-indicator').style.display = 'block';
-
-                    // ЛОГИКА ПРИОРИТЕТОВ:
-                    // Если задач в URL нет (пустой массив), но есть ссылка на таблицу -> грузим таблицу
-                    if ((!state.tasks || state.tasks.length === 0) && state.sheetUrl) {
-                        loadSheetData(state.sheetUrl);
-                    }
-                }
+                state = decode(d);
+                isGame = true;
+                document.getElementById('panel').style.display = 'none';
+                document.getElementById('turn-indicator').style.display = 'block';
             } catch(e) { console.error(e); }
         }
         
@@ -392,12 +359,8 @@
         
         if(state.tokenW) document.getElementById('token-w').value = state.tokenW;
         if(state.tokenH) document.getElementById('token-h').value = state.tokenH;
-        if(state.sheetUrl) document.getElementById('sheet-url').value = state.sheetUrl; // Восстанавливаем ссылку в поле
         
-        applyStateToAssets(); 
-        if (!state.sheetUrl || (state.tasks && state.tasks.length > 0)) {
-            prepareQuestions(); // Если не ждем таблицу, готовим сразу
-        }
+        applyStateToAssets(); prepareQuestions();
         update(); animate();
     }
 
@@ -421,7 +384,7 @@
                 else if(state.trailType === 'custom') color = state.colors.trail;
                 else color = ['#ff4d4d','#4d4dff','#4dff4d','#ffff4d'][i];
                 for(let k=0; k<2; k++) {
-                    trailParticles.push({ x: p.x + (Math.random()-0.5)*15, y: p.y + (Math.random()-0.5)*15, vx: (Math.random()-0.5), vy: (Math.random()-0.5), life: 1.0, color: color, size: Math.random()*2+1 });
+                   trailParticles.push({ x: p.x + (Math.random()-0.5)*15, y: p.y + (Math.random()-0.5)*15, vx: (Math.random()-0.5), vy: (Math.random()-0.5), life: 1.0, color: color, size: Math.random()*2+1 });
                 }
             }
         });
@@ -458,13 +421,8 @@
     }
 
     function showTask() {
-        if (!state.tasks || !state.tasks.length) {
-             if(isGame) alert("Вопросы еще не загрузились или список пуст!");
-             return;
-        }
-        // Если очередь пуста, перемешиваем заново
+        if (!state.tasks || !state.tasks.length) return;
         if (questionQueue.length === 0) prepareQuestions();
-        // Берем первый доступный индекс из очереди
         const taskIdx = questionQueue[0];
         const m = document.getElementById('task-modal');
         m.style.backgroundColor = state.colors.modalBg;
@@ -486,7 +444,6 @@
         if (document.getElementById('answer-input').value.trim().toLowerCase() === state.tasks[taskIdx].a.toLowerCase()) { 
             m.classList.remove('show');
             playSfx(600, 'sine', 0.2); 
-            // Удаляем отвеченный вопрос из очереди, чтобы он не повторился
             questionQueue.shift();
         } else { 
             playSfx(100, 'sawtooth', 0.3);
@@ -515,8 +472,7 @@
         state.trailType = document.getElementById('trail-type').value;
         state.playerCount = parseInt(document.getElementById('p-count').value);
         state.colors = { dots: document.getElementById('c-dots').value, modalBg: document.getElementById('c-bg').value, modalTxt: document.getElementById('c-txt').value, btnBg: document.getElementById('c-btn').value, trail: document.getElementById('c-trail').value };
-        state.sheetUrl = document.getElementById('sheet-url').value; // Сохраняем ссылку на таблицу
-
+        
         document.getElementById('sz-val').innerText = state.cellSize; 
         document.getElementById('l-th-val').innerText = state.ladderTh;
         document.getElementById('s-th-val').innerText = state.snakeTh;
@@ -525,10 +481,7 @@
         document.getElementById('font-preview').style.fontFamily = state.font;
         
         const qs = document.getElementById('qs').value.split('\n'), ans = document.getElementById('ans').value.split('\n');
-        // ВАЖНОЕ ИЗМЕНЕНИЕ: Сохраняем вопросы в state только если они введены вручную.
-        // Если поле пустое, массив будет пустым, и игра попытается загрузить Google Sheet.
         state.tasks = qs.map((q, i) => ({ q: q.trim(), a: (ans[i] || '').trim() })).filter(t => t.q);
-        
         applyStateToAssets();
     }
 
@@ -547,62 +500,51 @@
             }
         });
         state.points.forEach((p, i) => {
-    const px = p.x * cvs.width;
-    const py = p.y * cvs.height;
-    const s = state.cellSize;
-    const hasToken = tPos.some(tp => Math.hypot(tp.x - px, tp.y - py) < 15);
-    const baseColor = hasToken
-        ? `hsl(${hue}, 100%, 60%)`
-        : (linkFrom === i ? "#e91e63"
-        : p.type === 'skip'  ? "#f44336"
-        : p.type === 'boost' ? "#4CAF50"
-        : p.type === 'task'  ? "#2196F3"
-        : state.colors.dots);
+            const px = p.x * cvs.width;
+            const py = p.y * cvs.height;
+            const s = state.cellSize;
+            const hasToken = tPos.some(tp => Math.hypot(tp.x - px, tp.y - py) < 15);
+            const baseColor = hasToken ? `hsl(${hue}, 100%, 60%)` : (linkFrom === i ? "#e91e63" : p.type === 'skip'  ? "#f44336" : p.type === 'boost' ? "#4CAF50" : p.type === 'task'  ? "#2196F3" : state.colors.dots);
 
-    ctx.save();
-    if (state.neon) {
-        ctx.shadowBlur = hasToken ? 35 : 15;
-        ctx.shadowColor = baseColor;
-    }
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    ctx.beginPath();
-    if (state.cellShape === 'circle')
-        ctx.arc(px, py, s / 2, 0, Math.PI * 2);
-    else if (state.cellShape === 'square')
-        ctx.roundRect(px - s / 2, py - s / 2, s, s, 10);
-    else
-        ctx.roundRect(px - s, py - s / 2, s * 2, s, 10);
-    ctx.fill();
+            ctx.save();
+            if (state.neon) {
+                ctx.shadowBlur = hasToken ? 35 : 15;
+                ctx.shadowColor = baseColor;
+            }
+            ctx.fillStyle = "rgba(255,255,255,0.15)";
+            ctx.beginPath();
+            if (state.cellShape === 'circle') ctx.arc(px, py, s / 2, 0, Math.PI * 2);
+            else if (state.cellShape === 'square') ctx.roundRect(px - s / 2, py - s / 2, s, s, 10);
+            else ctx.roundRect(px - s, py - s / 2, s * 2, s, 10);
+            ctx.fill();
 
-    const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.strokeStyle = baseColor;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.9;
-    ctx.stroke();
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    if (state.cellShape === 'circle')
-        ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2);
-    else
-        ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    if (!isGame) {
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "white";
-        ctx.font = "14px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(i + 1, px, py + 5);
-    }
-});
+            const grad = ctx.createRadialGradient(px, py, s / 6, px, py, s / 1.4);
+            grad.addColorStop(0, "rgba(255,255,255,0)");
+            grad.addColorStop(1, baseColor.replace('rgb', 'rgba').replace(')', ',0.4)'));
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255,255,255,0.6)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.9;
+            ctx.stroke();
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            if (state.cellShape === 'circle') ctx.arc(px - s / 4.5, py - s / 4.5, s / 8, 0, Math.PI * 2);
+            else ctx.ellipse(px - s / 1.5, py - s / 4.5, s / 6, s / 10, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            if (!isGame) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = "white";
+                ctx.font = "14px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(i + 1, px, py + 5);
+            }
+        });
         ctx.font = `bold 20px ${state.font}`;
         ctx.fillStyle = "gold"; ctx.shadowBlur = 0; ctx.textAlign = "left";
         ctx.fillText("START", state.startPos.x, state.startPos.y); ctx.fillText("FINISH", state.finishPos.x, state.finishPos.y);
@@ -614,23 +556,14 @@
                 th += Math.sin(pulseFrame)*8;
             }
             ctx.save(); ctx.translate(tPos[i].x, tPos[i].y); ctx.rotate(tPos[i].angle);
-            if (state.tokens[i] && tImgs[i].complete) {
-                ctx.drawImage(tImgs[i], -tw/2, -th/2, tw, th);
-            }
-            else { 
-                ctx.fillStyle = ['red','blue','green','yellow'][i];
-                ctx.beginPath(); ctx.arc(0, 0, state.cellSize/3, 0, 7); ctx.fill(); 
-            }
+            if (state.tokens[i] && tImgs[i].complete) { ctx.drawImage(tImgs[i], -tw/2, -th/2, tw, th); }
+            else { ctx.fillStyle = ['red','blue','green','yellow'][i]; ctx.beginPath(); ctx.arc(0, 0, state.cellSize/3, 0, 7); ctx.fill(); }
             ctx.restore();
         }
         const dx = cvs.width-110, dy = cvs.height-110; ctx.save();
-        if(state.diceSkin === 'glass') { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
-        }
-        else if(state.diceSkin === 'neon') { ctx.fillStyle = "#000"; ctx.strokeStyle = state.colors.dots;
-        ctx.lineWidth = 4; ctx.shadowBlur = 15; ctx.shadowColor = state.colors.dots; }
-        else if(state.diceSkin === 'gold') { ctx.fillStyle = "gold";
-        ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 3; } else { ctx.fillStyle = "white";
-        }
+        if(state.diceSkin === 'glass') { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2; }
+        else if(state.diceSkin === 'neon') { ctx.fillStyle = "#000"; ctx.strokeStyle = state.colors.dots; ctx.lineWidth = 4; ctx.shadowBlur = 15; ctx.shadowColor = state.colors.dots; }
+        else if(state.diceSkin === 'gold') { ctx.fillStyle = "gold"; ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 3; } else { ctx.fillStyle = "white"; }
         ctx.beginPath(); ctx.roundRect(dx, dy, 90, 90, 15); ctx.fill(); if(state.diceSkin !== 'classic') ctx.stroke();
         ctx.shadowBlur = 0; ctx.fillStyle = (state.diceSkin === 'gold' || state.diceSkin === 'classic') ? "#333" : "white";
         ctx.font = `bold 55px ${state.font}`; ctx.textAlign = "center"; ctx.fillText(diceVal, dx+45, dy+65); ctx.restore();
@@ -640,24 +573,17 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const x = e.clientX, y = e.clientY;
-        if (x > cvs.width-110 && y > cvs.height-110) { roll(); return;
-        }
-        for(let i=0; i<state.playerCount; i++) if (Math.hypot(x-tPos[i].x, y-tPos[i].y) < state.tokenW/2) { dragIdx = 't'+i;
-        return; }
-        if (Math.hypot(x-state.startPos.x, y-state.startPos.y) < 50) { dragIdx = 'start'; return;
-        }
-        if (Math.hypot(x-state.finishPos.x, y-state.finishPos.y) < 50) { dragIdx = 'finish'; return;
-        }
+        if (x > cvs.width-110 && y > cvs.height-110) { roll(); return; }
+        for(let i=0; i<state.playerCount; i++) if (Math.hypot(x-tPos[i].x, y-tPos[i].y) < state.tokenW/2) { dragIdx = 't'+i; return; }
+        if (Math.hypot(x-state.startPos.x, y-state.startPos.y) < 50) { dragIdx = 'start'; return; }
+        if (Math.hypot(x-state.finishPos.x, y-state.finishPos.y) < 50) { dragIdx = 'finish'; return; }
         for (let i=0; i<state.points.length; i++) {
             if (Math.hypot(x-state.points[i].x*cvs.width, y-state.points[i].y*cvs.height) < state.cellSize/2) {
-                if (isLinkMode) { if (linkFrom === null) linkFrom = i;
-                else if (linkFrom !== i) { state.links.push({from: linkFrom, to: i}); linkFrom = null; update();
-                } } else if (!isGame) dragIdx = 'p'+i;
+                if (isLinkMode) { if (linkFrom === null) linkFrom = i; else if (linkFrom !== i) { state.links.push({from: linkFrom, to: i}); linkFrom = null; update(); } } else if (!isGame) dragIdx = 'p'+i;
                 return;
             }
         }
-        if (!isGame && !isLinkMode) { state.points.push({ x: x/cvs.width, y: y/cvs.height, type: 'normal' });
-        update(); }
+        if (!isGame && !isLinkMode) { state.points.push({ x: x/cvs.width, y: y/cvs.height, type: 'normal' }); update(); }
     };
 
     window.oncontextmenu = (e) => {
@@ -669,8 +595,7 @@
         if (!dragIdx) return;
         if (dragIdx === 'start') state.startPos = {x: e.clientX, y: e.clientY};
         else if (dragIdx === 'finish') state.finishPos = {x: e.clientX, y: e.clientY};
-        else if (dragIdx.startsWith('t')) { tPos[dragIdx[1]].tx = e.clientX;
-        tPos[dragIdx[1]].ty = e.clientY; }
+        else if (dragIdx.startsWith('t')) { tPos[dragIdx[1]].tx = e.clientX; tPos[dragIdx[1]].ty = e.clientY; }
         else if (dragIdx.startsWith('p')) state.points[dragIdx.substring(1)] = { x: e.clientX/cvs.width, y: e.clientY/cvs.height };
         update();
     };
@@ -678,8 +603,7 @@
     cvs.onmouseup = () => {
         if (dragIdx && dragIdx.startsWith('t')) {
             const idx = dragIdx[1];
-            if (Math.hypot(tPos[idx].tx-state.finishPos.x, tPos[idx].ty-state.finishPos.y) < 60) { won = true; tPos[idx].isWin = true; playVictorySfx(); document.getElementById('victory-overlay').style.display = 'flex';
-            }
+            if (Math.hypot(tPos[idx].tx-state.finishPos.x, tPos[idx].ty-state.finishPos.y) < 60) { won = true; tPos[idx].isWin = true; playVictorySfx(); document.getElementById('victory-overlay').style.display = 'flex'; }
             state.points.forEach((p, pIdx) => {
                 if (Math.hypot(tPos[idx].tx-p.x*cvs.width, tPos[idx].ty-p.y*cvs.height) < 50) {
                     tPos[idx].tx = p.x*cvs.width; tPos[idx].ty = p.y*cvs.height;
@@ -692,13 +616,9 @@
         dragIdx = null; update();
     };
 
-    function resize() { cvs.width = window.innerWidth;
-    cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
-    function save() { navigator.clipboard.writeText(window.location.href.split('?')[0] + "?game=" + encode(state));
-    alert("URL Ссылка скопирована!"); }
-    function getIframe() { const url = window.location.href.split('?')[0] + "?game=" + encode(state);
-    const code = `<iframe src="${url}" width="100%" height="600" style="border:none;" allow="autoplay; fullscreen"></iframe>`; navigator.clipboard.writeText(code); alert("Код iFrame скопирован!");
-}
+    function resize() { cvs.width = window.innerWidth; cvs.height = window.innerHeight; cnfCvs.width = window.innerWidth; cnfCvs.height = window.innerHeight; }
+    function save() { navigator.clipboard.writeText(window.location.href.split('?')[0] + "?game=" + encode(state)); alert("URL Ссылка скопирована!"); }
+    function getIframe() { const url = window.location.href.split('?')[0] + "?game=" + encode(state); const code = `<iframe src="${url}" width="100%" height="600" style="border:none;" allow="autoplay; fullscreen"></iframe>`; navigator.clipboard.writeText(code); alert("Код iFrame скопирован!"); }
     init();
 </script>
 </body>
