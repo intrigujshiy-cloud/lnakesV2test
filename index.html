@@ -367,28 +367,24 @@
 
     function toggleLinkMode() { isLinkMode = !isLinkMode; linkFrom = null; document.getElementById('link-btn').style.background = isLinkMode ? "#e91e63" : "#9c27b0"; }
 
-function roll() {
+    function roll() {
         if (isRoll || won) return;
-        isRoll = true; playDiceSound();
+isRoll = true; playDiceSound();
         if(bgMusic.paused && state.music) bgMusic.play().catch(()=>{});
         let c = 0;
-        const iv = setInterval(() => { 
+const iv = setInterval(() => { 
             diceVal = Math.floor(Math.random() * 6) + 1; 
             if (++c > 12) { 
-                clearInterval(iv); 
-                isRoll = false; 
-                
-                // ВОТ ИСПРАВЛЕННЫЙ БЛОК:
-                setTimeout(() => {
-                    showTask(); // Это вызывает окно с вопросом
-                    if(isGame) { 
-                        currentPlayer = (currentPlayer + 1) % state.playerCount; 
-                        document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); 
-                    }
-                }, 300); 
+                clearInterval(iv); isRoll = false; 
+                if(isGame) {
+                    currentPlayer 
+= (currentPlayer + 1) % state.playerCount;
+                    document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1);
+                }
+                setTimeout(showTask, 300); 
             } 
         }, 60);
-    }
+}
 
     function showTask() {
         if (!state.tasks || !state.tasks.length) return;
