@@ -59,6 +59,16 @@
         @keyframes rainbowMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
         .cup { font-size: 150px; z-index: 20001; position: relative; }
         #loading-msg { display:none; color: #4CAF50; font-size: 12px; margin-bottom: 5px; text-align: center; }
+@keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%); }
+            20%, 60% { transform: translate(-53%, -50%); }
+            40%, 80% { transform: translate(-47%, -50%); }
+        }
+        /* Класс ошибки: анимация + красная рамка */
+        .modal-error {
+            animation: shake 0.4s ease-in-out !important;
+            border: 3px solid #f44336 !important;
+        }
     </style>
 </head>
 <body>
@@ -242,7 +252,24 @@
         const inp = document.getElementById('answer-input'); inp.value = ""; setTimeout(()=>inp.focus(),100);
     }
     function closeModal() { document.getElementById('task-modal').classList.remove('show'); }
-    function checkAnswer() { const m=document.getElementById('task-modal'), tIdx=parseInt(m.getAttribute('data-ans-idx')); if(document.getElementById('answer-input').value.trim().toLowerCase()===state.tasks[tIdx].a.toLowerCase()){ m.classList.remove('show'); playSfx(600); questionQueue.shift(); }else{ playSfx(100,'sawtooth'); alert("Wrong!"); } }
+    function checkAnswer() { 
+        const m = document.getElementById('task-modal'), 
+              tIdx = parseInt(m.getAttribute('data-ans-idx')),
+              input = document.getElementById('answer-input'); 
+
+        if (input.value.trim().toLowerCase() === state.tasks[tIdx].a.toLowerCase()) { 
+            m.classList.remove('show', 'modal-error'); 
+            playSfx(600); 
+            questionQueue.shift(); 
+            input.value = ""; // Очищаем поле после правильного ответа
+        } else { 
+            playSfx(100, 'sawtooth'); 
+            m.classList.remove('modal-error'); 
+            void m.offsetWidth; // Магия для перезапуска анимации
+            m.classList.add('modal-error'); 
+            setTimeout(() => m.classList.remove('modal-error'), 500);
+        } 
+    }
     function update() { if(isGame)return; state.bg=document.getElementById('bg-url').value; state.modalBgImg=document.getElementById('modal-bg-url').value; const nM=document.getElementById('music-url').value; if(nM!==state.music){state.music=nM; bgMusic.src=nM;} state.ladderImg=document.getElementById('ladder-url').value; state.snakeImg=document.getElementById('snake-url').value; state.tokens=[document.getElementById('t1').value,document.getElementById('t2').value,document.getElementById('t3').value,document.getElementById('t4').value]; state.cellSize=parseInt(document.getElementById('cell-size').value); state.ladderTh=parseInt(document.getElementById('ladder-th').value); state.snakeTh=parseInt(document.getElementById('snake-th').value); state.tokenW=parseInt(document.getElementById('token-w').value); state.tokenH=parseInt(document.getElementById('token-h').value); state.neon=document.getElementById('neon-on').checked; state.cellShape=document.getElementById('cell-shape').value; state.font=document.getElementById('game-font').value; state.diceSkin=document.getElementById('dice-skin').value; state.trailType=document.getElementById('trail-type').value; state.playerCount=parseInt(document.getElementById('p-count').value); state.sheetUrl=document.getElementById('sheet-url').value; state.colors={dots:document.getElementById('c-dots').value,modalBg:document.getElementById('c-bg').value,modalTxt:document.getElementById('c-txt').value,btnBg:document.getElementById('c-btn').value,trail:document.getElementById('c-trail').value}; document.getElementById('sz-val').innerText=state.cellSize; document.getElementById('l-th-val').innerText=state.ladderTh; document.getElementById('s-th-val').innerText=state.snakeTh; document.getElementById('tw-val').innerText=state.tokenW; document.getElementById('th-val').innerText=state.tokenH; document.getElementById('font-preview').style.fontFamily=state.font; const qs=document.getElementById('qs').value.split('\n'), ans=document.getElementById('ans').value.split('\n'); state.tasks=qs.map((q,i)=>({q:q.trim(),a:(ans[i]||'').trim()})).filter(t=>t.q); applyStateToAssets(); }
     function draw() { ctx.clearRect(0,0,cvs.width,cvs.height); if(bgImg.src&&bgImg.complete)ctx.drawImage(bgImg,0,0,cvs.width,cvs.height); trailParticles.forEach(p=>{ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,7); ctx.fill();}); ctx.globalAlpha=1.0; state.links.forEach(l=>{ const f=state.points[l.from], t=state.points[l.to]; if(f&&t){ const x1=f.x*cvs.width, y1=f.y*cvs.height, x2=t.x*cvs.width, y2=t.y*cvs.height, dist=Math.hypot(x2-x1,y2-y1), ang=Math.atan2(y2-y1,x2-x1), isL=(y2<y1); let im=isL?ladderImgObj:snakeImgObj, th=isL?state.ladderTh:state.snakeTh; if(im.complete&&im.src){ctx.save(); ctx.translate(x1,y1); ctx.rotate(ang+Math.PI/2); ctx.drawImage(im,-th/2,-dist,th,dist); ctx.restore();} } }); state.points.forEach((p,i)=>{ const px=p.x*cvs.width, py=p.y*cvs.height, s=state.cellSize, hasT=tPos.some(tp=>Math.hypot(tp.x-px,tp.y-py)<15), bC=hasT?`hsl(${hue},100%,60%)`:(linkFrom===i?"#e91e63":p.type==='skip'?"#f44336":p.type==='boost'?"#4CAF50":p.type==='task'?"#2196F3":state.colors.dots); ctx.save(); if(state.neon){ctx.shadowBlur=hasT?35:15; ctx.shadowColor=bC;} ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.beginPath(); if(state.cellShape==='circle')ctx.arc(px,py,s/2,0,7); else if(state.cellShape==='square')ctx.roundRect(px-s/2,py-s/2,s,s,10); else ctx.roundRect(px-s,py-s/2,s*2,s,10); ctx.fill(); const g=ctx.createRadialGradient(px,py,s/6,px,py,s/1.4); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(1,bC.replace('rgb','rgba').replace(')',',0.4)')); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=2; ctx.stroke(); ctx.strokeStyle=bC; ctx.lineWidth=1; ctx.stroke(); ctx.fillStyle="white"; ctx.beginPath(); if(state.cellShape==='circle')ctx.arc(px-s/4.5,py-s/4.5,s/8,0,7); else ctx.ellipse(px-s/1.5,py-s/4.5,s/6,s/10,Math.PI/4,0,7); ctx.fill(); ctx.restore(); if(!isGame){ctx.fillStyle="white"; ctx.font="14px Arial"; ctx.textAlign="center"; ctx.fillText(i+1,px,py+5);} }); ctx.font = `bold 40px ${state.font}`; 
         ctx.fillStyle = state.colors.dots; 
