@@ -161,7 +161,7 @@
     function toggleLinkMode() { isLinkMode=!isLinkMode; linkFrom=null; document.getElementById('link-btn').style.background=isLinkMode?"#e91e63":"#9c27b0"; }
 
     // ИСПРАВЛЕННЫЙ БЛОК:
-    function roll() {
+   function roll() {
         if (isRoll || won) return;
         isRoll = true; playDiceSound();
         if(bgMusic.paused && state.music) bgMusic.play().catch(()=>{});
@@ -172,14 +172,57 @@
                 clearInterval(iv); 
                 isRoll = false; 
                 setTimeout(() => {
-                    // Обновляем список вопросов перед показом на случай, если они подгрузились
-                    const qs = document.getElementById('qs').value.split('\n'), ans = document.getElementById('ans').value.split('\n');
-                    state.tasks = qs.map((q, i) => ({ q: q.trim(), a: (ans[i] || '').trim() })).filter(t => t.q);
+                    // Считываем текущее содержимое полей ввода
+                    const qVal = document.getElementById('qs').value;
+                    const aVal = document.getElementById('ans').value;
+
+                    // Вспомогательная функция для завершения хода (чтобы не писать дважды)
+                    const finishTurn = () => {
+                        showTask(); 
+                        if(isGame) { 
+                            currentPlayer = (currentPlayer + 1) % state.playerCount; 
+                            document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); 
+                        }
+                    };
+
+                    // === ЛОГИКА ПРИОРИТЕТОВ ===
                     
-                    showTask(); 
-                    if(isGame) { 
-                        currentPlayer = (currentPlayer + 1) % state.playerCount; 
-                        document.getElementById('turn-indicator').innerText = "ХОД ИГРОКА: " + (currentPlayer + 1); 
+                    if (qVal.trim().length > 0) {
+                        // ПРИОРИТЕТ 1: Если вручную введены вопросы - используем их
+                        const qs = qVal.split('\n'), ans = aVal.split('\n');
+                        state.tasks = qs.map((q, i) => ({ q: q.trim(), a: (ans[i] || '').trim() })).filter(t => t.q);
+                        
+                        // ВАЖНО: Сбрасываем очередь вопросов, чтобы не было ошибки индексов
+                        prepareQuestions(); 
+                        finishTurn();
+                    } 
+                    else if (state.sheetUrl) {
+                        // ПРИОРИТЕТ 2: Если вручную пусто - пробуем загрузить из Google Таблицы "на лету"
+                        fetch(state.sheetUrl).then(res=>res.text()).then(text=>{ 
+                            const rows=text.split(/\r?\n/); 
+                            let newTasks=[]; 
+                            rows.forEach(row=>{ 
+                                if(!row.trim())return; 
+                                const pts=row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+                                if(pts&&pts.length>=1){ 
+                                    let q=pts[0].replace(/^"|"$/g,'').trim(), a=pts.length>1?pts[1].replace(/^"|"$/g,'').trim():''; 
+                                    if(q) newTasks.push({q:q, a:a}); 
+                                } 
+                            }); 
+                            // Если нашли вопросы в таблице — обновляем массив
+                            if(newTasks.length > 0) {
+                                state.tasks = newTasks;
+                                prepareQuestions();
+                            }
+                            finishTurn();
+                        }).catch(e=>{
+                            console.error("Ошибка Google:", e);
+                            finishTurn(); // Завершаем ход даже при ошибке загрузки
+                        }); 
+                    } 
+                    else {
+                        // Если нет ни ручных, ни ссылки — просто меняем игрока (или показываем пустой таск)
+                        finishTurn();
                     }
                 }, 400); 
             } 
