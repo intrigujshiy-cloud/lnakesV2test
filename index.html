@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Planet Game: Protected Edition</title>
+    <title>3D Planet Game</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Comfortaa:wght@700&family=Bungee&family=Kelly+Slab&family=Monoton&family=Pacifico&family=Ruslan+Display&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
+        /* ЗАЩИТА: Добавлен запрет на выделение (user-select: none) */
+        body { 
+            margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; 
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
         canvas { display: block; }
         
-        /* --- ЗАЩИТА: ЭКРАН ПАРОЛЯ --- */
         #auth-screen { position: fixed; inset: 0; background: #050505; z-index: 20000; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%); color: #00f2ff; }
         .lock-icon { font-size: 60px; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
         .auth-box { background: rgba(20, 20, 30, 0.9); padding: 40px; border-radius: 20px; border: 2px solid #333; text-align: center; box-shadow: 0 0 50px rgba(0, 242, 255, 0.1); width: 300px; }
         .auth-title { font-size: 18px; margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; color: #fff; font-weight: bold; }
-        .auth-input { width: 100%; padding: 15px; background: #000; border: 1px solid #444; color: #00f2ff; font-size: 20px; text-align: center; border-radius: 10px; margin-bottom: 20px; outline: none; letter-spacing: 5px; transition: 0.3s; box-sizing: border-box; }
+        /* Разрешаем выделение только в полях ввода, иначе нельзя будет писать */
+        .auth-input { user-select: auto; width: 100%; padding: 15px; background: #000; border: 1px solid #444; color: #00f2ff; font-size: 20px; text-align: center; border-radius: 10px; margin-bottom: 20px; outline: none; letter-spacing: 5px; transition: 0.3s; box-sizing: border-box; }
         .auth-input:focus { border-color: #00f2ff; box-shadow: 0 0 15px rgba(0, 242, 255, 0.3); }
         .auth-btn { width: 100%; padding: 15px; background: #00f2ff; color: #000; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; transition: 0.3s; text-transform: uppercase; }
         .auth-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #00f2ff; }
         .error-msg { color: #ff0055; margin-top: 15px; font-size: 14px; display: none; }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-        /* --------------------------- */
 
-        /* --- БРЕНДИНГ (ЛЕВЫЙ НИЖНИЙ УГОЛ) --- */
         .brand-logo { 
             position: absolute; 
             bottom: 10px; 
-            left: 10px; /* СЛЕВА! */
+            left: 10px; 
             z-index: 100; 
             display: block; 
             cursor: pointer; 
@@ -36,17 +41,17 @@
             height: 115px; width: auto; 
             filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 5px #ffd700) drop-shadow(0 0 15px #ffb300) drop-shadow(0 0 30px rgba(255, 179, 0, 0.4));
             transition: all 0.3s ease;
+            -webkit-user-drag: none; /* Запрет перетаскивания лого */
         }
         .brand-logo:hover img { transform: scale(1.05); filter: drop-shadow(0 0 5px #ffffff) drop-shadow(0 0 10px #ffd700) drop-shadow(0 0 25px #ffb300) drop-shadow(0 0 40px rgba(255, 179, 0, 0.6)); }
         @keyframes pulse-logo { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        /* --------------------------- */
 
         #panel {
             position: absolute; left: 10px; top: 10px; width: 340px; 
             background: rgba(0,0,0,0.95); padding: 15px; border-radius: 10px;
             z-index: 100; color: white; border: 1px solid #444;
             max-height: 95vh; overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            display: none; /* Скрыт по умолчанию до ввода пароля */
+            display: none;
         }
         #turn-indicator {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -64,10 +69,11 @@
         .clear-btn:hover { color: #f44336; }
         .tasks-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .tasks-row div { flex: 1; }
-        .tasks-row textarea { height: 80px; resize: none; }
+        .tasks-row textarea { height: 80px; resize: none; user-select: auto; } /* Разрешаем писать */
         .colors-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         .colors-grid label { font-size: 10px; display: flex; flex-direction: column; }
-        input, textarea, select { width: 100%; background: #222; color: white; border: 1px solid #555; padding: 5px 25px 5px 5px; box-sizing: border-box; border-radius: 4px; }
+        /* Разрешаем писать в инпутах */
+        input, textarea, select { user-select: auto; width: 100%; background: #222; color: white; border: 1px solid #555; padding: 5px 25px 5px 5px; box-sizing: border-box; border-radius: 4px; }
         .neon-row { background: #333; padding: 10px; border-radius: 5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
         .btn { width: 100%; padding: 8px; margin-bottom: 5px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; color: white; }
         .size-settings { margin-bottom: 15px; }
@@ -86,7 +92,7 @@
         #task-modal.show { transform: translate(-50%, -50%) scale(1); display: block; }
         .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; font-weight: bold; line-height: 1; opacity: 0.7; }
         .close-modal:hover { opacity: 1; }
-        #answer-input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 16px; border: 1px solid #ccc; background: white; color: #333; }
+        #answer-input { user-select: auto; width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; font-size: 16px; border: 1px solid #ccc; background: white; color: #333; }
         #check-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; color: white; }
         #victory-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(45deg, #ff9999, #ffcc99, #ffff99, #99ff99, #99ccff, #cc99ff); background-size: 400% 400%; animation: rainbowMove 6s ease infinite; z-index: 20000; flex-direction: column; justify-content: center; align-items: center; color: #444; text-align: center; cursor: pointer; }
         #confetti-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -173,7 +179,7 @@
     <button class="btn" style="background:#f44336" onclick="if(confirm('Очистить все?')){location.reload();}">Очистить всё</button>
 </div>
 
-<a id="brandLink" href="#" target="_blank" class="brand-logo"><img id="brandImg" src="" alt="Logo"></a>
+<a id="brandLink" href="#" target="_blank" class="brand-logo"><img id="brandImg" src="" alt=""></a>
 
 <div id="victory-overlay" onclick="location.reload()"><canvas id="confetti-canvas"></canvas><h1 id="vic-title" style="font-size: 80px; margin: 0; position: relative; z-index: 20002;">VICTORY!</h1><div class="cup">🏆</div></div>
 
@@ -188,7 +194,6 @@
 <canvas id="cvs"></canvas>
 
 <script>
-    console.log("%cProtected content.", "color: red; font-size: 25px; font-weight: bold;");
     const cvs = document.getElementById('cvs'), ctx = cvs.getContext('2d'), cnfCvs = document.getElementById('confetti-canvas'), cnfCtx = cnfCvs.getContext('2d');
     let audioCtx = null; const bgMusic = new Audio(); bgMusic.loop = true;
     let state = { bg: '', modalBgImg: '', music: '', tokens: ['', '', '', ''], ladderImg: '', snakeImg: '', points: [], cellSize: 60, ladderTh: 60, snakeTh: 60, tokenW: 60, tokenH: 60, tasks: [], playerCount: 4, colors: { dots: '#ffffff', modalBg: '#fff9e6', modalTxt: '#333333', btnBg: '#4CAF50', trail: '#ffffff' }, neon: true, randQ: true, cellShape: 'circle', font: 'Arial', diceSkin: 'classic', trailType: 'match', startPos: {x:100, y:150}, finishPos: {x:100, y:250}, links: [], sheetUrl: '' };
@@ -196,11 +201,9 @@
     let tPos = [{x:window.innerWidth-60,y:60,tx:window.innerWidth-60,ty:60,angle:0,isWin:false},{x:window.innerWidth-60,y:140,tx:window.innerWidth-60,ty:140,angle:0,isWin:false},{x:window.innerWidth-60,y:220,tx:window.innerWidth-60,ty:220,angle:0,isWin:false},{x:window.innerWidth-60,y:300,tx:window.innerWidth-60,ty:300,angle:0,isWin:false}];
     let dragIdx = null, isGame = false, diceVal = "?", isRoll = false, won = false, linkFrom = null, isLinkMode = false, particles = [], trailParticles = [], questionQueue = [], currentQuestionIdx = 0, pulseFrame = 0, hue = 0, currentPlayer = 0;
 
-    // --- 🔒 ЗАЩИЩЕННЫЙ БЛОК ---
     const _0xSec = ["aHR0cHM6Ly9pbWcuZ2VuaWFsbHkuY29tLzY2ZjNhMzFiY2QxYTEyMDAxNTY4YWI4NS9lMmY5NzgyZi0xYmRlLTQ1ODctYWExNy0yMDBkMzg0ZDM3ZmMucG5n", "aHR0cHM6Ly92ay5jb20vYXJjZW5jaWVsbA==", "NDc1NTE3NTA="];
     function cP() { const inp = document.getElementById('pInput').value; if(btoa(inp) === _0xSec[2]) { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('panel').style.display = 'block'; update(); } else { const err = document.getElementById('errMsg'); err.style.display = 'block'; document.getElementById('pInput').style.borderColor = "red"; setTimeout(()=>document.getElementById('pInput').style.borderColor = "#444", 500); } }
-    function setBrand() { document.getElementById('brandImg').src = atob(_0xSec[0]); document.getElementById('brandLink').href = atob(_0xSec[1]); }
-    // -------------------------
+    function _initRes() { document.getElementById('brandImg').src = atob(_0xSec[0]); document.getElementById('brandLink').href = atob(_0xSec[1]); }
 
     function clearInp(id) { document.getElementById(id).value = ''; update(); }
     function playSfx(freq, type='sine', duration=0.2, volume=0.1) { if(!audioCtx) return; const osc=audioCtx.createOscillator(), gain=audioCtx.createGain(); osc.type=type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); if(type==='snake'){osc.type='sawtooth'; osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime+duration);} gain.gain.setValueAtTime(volume, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime+duration); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+duration); }
@@ -214,12 +217,10 @@
     function init() { 
         window.addEventListener('resize', resize); resize(); 
         const p=new URLSearchParams(window.location.search), d=p.get('game'); 
-        setBrand(); // Устанавливаем логотип
+        _initRes(); 
         if(d){ 
-            // Режим ИГРЫ: скрываем пароль и редактор
             try{ state=decode(d); isGame=true; document.getElementById('auth-screen').style.display='none'; document.getElementById('panel').style.display='none'; document.getElementById('turn-indicator').style.display='block'; if(state.sheetUrl) loadFromGoogle(state.sheetUrl); }catch(e){console.error(e);} 
         } else {
-            // Режим РЕДАКТОРА: показываем пароль
             document.getElementById('auth-screen').style.display='flex';
         }
         document.body.style.fontFamily=state.font; document.getElementById('vic-title').style.fontFamily=state.font; if(state.music) bgMusic.src=state.music; if(state.tokenW) document.getElementById('token-w').value=state.tokenW; if(state.tokenH) document.getElementById('token-h').value=state.tokenH; if(state.sheetUrl) document.getElementById('sheet-url').value=state.sheetUrl; applyStateToAssets(); prepareQuestions(); update(); animate(); 
@@ -304,13 +305,38 @@
     function update() { if(isGame)return; state.bg=document.getElementById('bg-url').value; state.modalBgImg=document.getElementById('modal-bg-url').value; const nM=document.getElementById('music-url').value; if(nM!==state.music){state.music=nM; bgMusic.src=nM;} state.ladderImg=document.getElementById('ladder-url').value; state.snakeImg=document.getElementById('snake-url').value; state.tokens=[document.getElementById('t1').value,document.getElementById('t2').value,document.getElementById('t3').value,document.getElementById('t4').value]; state.cellSize=parseInt(document.getElementById('cell-size').value); state.ladderTh=parseInt(document.getElementById('ladder-th').value); state.snakeTh=parseInt(document.getElementById('snake-th').value); state.tokenW=parseInt(document.getElementById('token-w').value); state.tokenH=parseInt(document.getElementById('token-h').value); state.neon=document.getElementById('neon-on').checked; state.cellShape=document.getElementById('cell-shape').value; state.font=document.getElementById('game-font').value; state.diceSkin=document.getElementById('dice-skin').value; state.trailType=document.getElementById('trail-type').value; state.playerCount=parseInt(document.getElementById('p-count').value); state.sheetUrl=document.getElementById('sheet-url').value; state.colors={dots:document.getElementById('c-dots').value,modalBg:document.getElementById('c-bg').value,modalTxt:document.getElementById('c-txt').value,btnBg:document.getElementById('c-btn').value,trail:document.getElementById('c-trail').value}; document.getElementById('sz-val').innerText=state.cellSize; document.getElementById('l-th-val').innerText=state.ladderTh; document.getElementById('s-th-val').innerText=state.snakeTh; document.getElementById('tw-val').innerText=state.tokenW; document.getElementById('th-val').innerText=state.tokenH; document.getElementById('font-preview').style.fontFamily=state.font; const qs=document.getElementById('qs').value.split('\n'), ans=document.getElementById('ans').value.split('\n'); state.tasks=qs.map((q,i)=>({q:q.trim(),a:(ans[i]||'').trim()})).filter(t=>t.q); applyStateToAssets(); }
     function draw() { ctx.clearRect(0,0,cvs.width,cvs.height); if(bgImg.src&&bgImg.complete)ctx.drawImage(bgImg,0,0,cvs.width,cvs.height); trailParticles.forEach(p=>{ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,7); ctx.fill();}); ctx.globalAlpha=1.0; state.links.forEach(l=>{ const f=state.points[l.from], t=state.points[l.to]; if(f&&t){ const x1=f.x*cvs.width, y1=f.y*cvs.height, x2=t.x*cvs.width, y2=t.y*cvs.height, dist=Math.hypot(x2-x1,y2-y1), ang=Math.atan2(y2-y1,x2-x1), isL=(y2<y1); let im=isL?ladderImgObj:snakeImgObj, th=isL?state.ladderTh:state.snakeTh; if(im.complete&&im.src){ctx.save(); ctx.translate(x1,y1); ctx.rotate(ang+Math.PI/2); ctx.drawImage(im,-th/2,-dist,th,dist); ctx.restore();} } }); state.points.forEach((p,i)=>{ const px=p.x*cvs.width, py=p.y*cvs.height, s=state.cellSize, hasT=tPos.some(tp=>Math.hypot(tp.x-px,tp.y-py)<15), bC=hasT?`hsl(${hue},100%,60%)`:(linkFrom===i?"#e91e63":p.type==='skip'?"#f44336":p.type==='boost'?"#4CAF50":p.type==='task'?"#2196F3":state.colors.dots); ctx.save(); if(state.neon){ctx.shadowBlur=hasT?35:15; ctx.shadowColor=bC;} ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.beginPath(); if(state.cellShape==='circle')ctx.arc(px,py,s/2,0,7); else if(state.cellShape==='square')ctx.roundRect(px-s/2,py-s/2,s,s,10); else ctx.roundRect(px-s,py-s/2,s*2,s,10); ctx.fill(); const g=ctx.createRadialGradient(px,py,s/6,px,py,s/1.4); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(1,bC.replace('rgb','rgba').replace(')',',0.4)')); ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=2; ctx.stroke(); ctx.strokeStyle=bC; ctx.lineWidth=1; ctx.stroke(); ctx.fillStyle="white"; ctx.beginPath(); if(state.cellShape==='circle')ctx.arc(px-s/4.5,py-s/4.5,s/8,0,7); else ctx.ellipse(px-s/1.5,py-s/4.5,s/6,s/10,Math.PI/4,0,7); ctx.fill(); ctx.restore(); if(!isGame){ctx.fillStyle="white"; ctx.font="14px Arial"; ctx.textAlign="center"; ctx.fillText(i+1,px,py+5);} }); ctx.font = `bold 40px ${state.font}`; ctx.fillStyle = state.colors.dots; ctx.textAlign = "center"; ctx.fillText("START", state.startPos.x, state.startPos.y); ctx.fillText("FINISH", state.finishPos.x, state.finishPos.y); for(let i=0;i<(isGame?state.playerCount:4);i++){ let tw=state.tokenW, th=state.tokenH; if(isGame&&i===currentPlayer&&!won){tw+=Math.sin(pulseFrame)*8; th+=Math.sin(pulseFrame)*8;} ctx.save(); ctx.translate(tPos[i].x,tPos[i].y); ctx.rotate(tPos[i].angle); if(state.tokens[i]&&tImgs[i].complete)ctx.drawImage(tImgs[i],-tw/2,-th/2,tw,th); else {ctx.fillStyle=['red','blue','green','yellow'][i]; ctx.beginPath(); ctx.arc(0,0,state.cellSize/3,0,7); ctx.fill();} ctx.restore(); } const dx=cvs.width-110, dy=cvs.height-110; ctx.save(); if(state.diceSkin==='glass'){ctx.fillStyle="rgba(255,255,255,0.3)"; ctx.strokeStyle="rgba(255,255,255,0.8)"; ctx.lineWidth=2;} else if(state.diceSkin==='neon'){ctx.fillStyle="#000"; ctx.strokeStyle=state.colors.dots; ctx.lineWidth=4; ctx.shadowBlur=15; ctx.shadowColor=state.colors.dots;} else if(state.diceSkin==='gold'){ctx.fillStyle="gold"; ctx.strokeStyle="#b8860b"; ctx.lineWidth=3;} else ctx.fillStyle="white"; ctx.beginPath(); ctx.roundRect(dx,dy,90,90,15); ctx.fill(); if(state.diceSkin!=='classic')ctx.stroke(); ctx.shadowBlur=0; ctx.fillStyle=(state.diceSkin==='gold'||state.diceSkin==='classic')?"#333":"white"; ctx.font=`bold 55px ${state.font}`; ctx.textAlign="center"; ctx.fillText(diceVal,dx+45,dy+65); ctx.restore(); }
     cvs.onmousedown=(e)=>{ if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended')audioCtx.resume(); const x=e.clientX, y=e.clientY; if(x>cvs.width-110&&y>cvs.height-110){roll(); return;} for(let i=0;i<state.playerCount;i++)if(Math.hypot(x-tPos[i].x,y-tPos[i].y)<state.tokenW/2){dragIdx='t'+i; return;} if(Math.hypot(x-state.startPos.x,y-state.startPos.y)<50){dragIdx='start'; return;} if(Math.hypot(x-state.finishPos.x,y-state.finishPos.y)<50){dragIdx='finish'; return;} for(let i=0;i<state.points.length;i++){ if(Math.hypot(x-state.points[i].x*cvs.width,y-state.points[i].y*cvs.height)<state.cellSize/2){ if(isLinkMode){if(linkFrom===null)linkFrom=i; else if(linkFrom!==i){state.links.push({from:linkFrom,to:i}); linkFrom=null; update();}} else if(!isGame)dragIdx='p'+i; return; } } if(!isGame&&!isLinkMode){state.points.push({x:x/cvs.width,y:y/cvs.height,type:'normal'}); update();} };
-    window.oncontextmenu=(e)=>{ e.preventDefault(); if(isGame)return; state.points.forEach(p=>{if(Math.hypot(e.clientX-p.x*cvs.width,e.clientY-p.y*cvs.height)<state.cellSize/2){const ts=['normal','skip','boost','task']; p.type=ts[(ts.indexOf(p.type||'normal')+1)%ts.length]; update(); playSfx(400);}}); };
+    
+    // ПРАВАЯ КНОПКА: В редакторе работает (меняет тип клетки), но меню не открывает. В игре вообще не работает.
+    window.oncontextmenu=(e)=>{ 
+        e.preventDefault(); // Блокируем стандартное меню браузера в любом случае
+        if(isGame)return; // Если это ИГРА, то просто ничего не делаем
+        
+        // А если это РЕДАКТОР, то выполняем твою логику (смена типа клетки)
+        state.points.forEach(p=>{if(Math.hypot(e.clientX-p.x*cvs.width,e.clientY-p.y*cvs.height)<state.cellSize/2){const ts=['normal','skip','boost','task']; p.type=ts[(ts.indexOf(p.type||'normal')+1)%ts.length]; update(); playSfx(400);}}); 
+    };
+    
     cvs.onmousemove=(e)=>{ if(!dragIdx)return; if(dragIdx==='start')state.startPos={x:e.clientX,y:e.clientY}; else if(dragIdx==='finish')state.finishPos={x:e.clientX,y:e.clientY}; else if(dragIdx.startsWith('t')){tPos[dragIdx[1]].tx=e.clientX; tPos[dragIdx[1]].ty=e.clientY;} else if(dragIdx.startsWith('p'))state.points[dragIdx.substring(1)]={x:e.clientX/cvs.width,y:e.clientY/cvs.height}; update(); };
     cvs.onmouseup=()=>{ if(dragIdx&&dragIdx.startsWith('t')){ const idx=dragIdx[1]; if(Math.hypot(tPos[idx].tx-state.finishPos.x,tPos[idx].ty-state.finishPos.y)<60){won=true; tPos[idx].isWin=true; playVictorySfx(); document.getElementById('victory-overlay').style.display='flex';} state.points.forEach((p,pIdx)=>{ if(Math.hypot(tPos[idx].tx-p.x*cvs.width,tPos[idx].ty-p.y*cvs.height)<50){ tPos[idx].tx=p.x*cvs.width; tPos[idx].ty=p.y*cvs.height; if(isGame){if(p.type==='task')setTimeout(showTask,500); if(p.type==='boost')playSfx(900); if(p.type==='skip')playSfx(50,'sawtooth');} const l=state.links.find(li=>li.from===pIdx); if(l){const iL=state.points[l.from].y>state.points[l.to].y; setTimeout(()=>{playSfx(iL?1000:200,iL?'sine':'snake'); tPos[idx].tx=state.points[l.to].x*cvs.width; tPos[idx].ty=state.points[l.to].y*cvs.height;},500);} } }); } dragIdx=null; update(); };
     function resize(){cvs.width=window.innerWidth; cvs.height=window.innerHeight; cnfCvs.width=window.innerWidth; cnfCvs.height=window.innerHeight;}
     function save(){ let s=JSON.parse(JSON.stringify(state)); s.points=s.points.map(p=>({x:Math.round(p.x*1000)/1000,y:Math.round(p.y*1000)/1000,type:p.type})); s.startPos={x:Math.round(s.startPos.x),y:Math.round(s.startPos.y)}; s.finishPos={x:Math.round(s.finishPos.x),y:Math.round(s.finishPos.y)}; if(s.sheetUrl)s.tasks=[]; const u=window.location.href.split('?')[0]+"?game="+encode(s); navigator.clipboard.writeText(u); alert("Ссылка скопирована!"); return u; }
     function getIframe(){ const u=save(), c=`<iframe src="${u}" width="100%" height="600" style="border:none;" allow="autoplay"></iframe>`; navigator.clipboard.writeText(c); alert("Код iFrame скопирован!"); }
     init();
+
+    // 🔥 ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА (Железная Стена) 🔥
+    document.onselectstart = function() { return false; }; // Запрет выделения
+    document.ondragstart = function() { return false; };   // Запрет перетаскивания
+
+    document.onkeydown = function(e) {
+        if (e.keyCode == 123) return false; // F12
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+        if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Исходный код
+        if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false; // Сохранить
+        if (e.ctrlKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Копировать
+        if (e.ctrlKey && e.keyCode == 'A'.charCodeAt(0)) return false; // Выделить всё
+    };
+    console.log("%cProtected Content", "color: red; font-size: 20px; font-weight: bold;");
 </script>
 </body>
 </html>
